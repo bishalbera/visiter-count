@@ -8,6 +8,17 @@ const port = 3000;
 
 const filePath = "count.txt";
 
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("MongoDB connected..."))
+  .catch((err) => console.log(err));
+
+const countSchema = new mongoose.Schema({ count: Number });
+const Count = mongoose.model("Count", countSchema);
+
 const readCount = async () => {
   try {
     const data = await fs.readFile(filePath, "utf-8");
@@ -26,13 +37,16 @@ const incrementCounter = async () => {
 };
 
 app.get("/visitor-count", async (req, res) => {
-  try {
-    const count = await incrementCounter();
-    res.json({ count }); 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" }); 
+  let counter = await Count.findOne({});
+
+  if (!counter) {
+    counter = new Count({ count: 1 });
+  } else {
+    counter.count += 1;
   }
+
+  await counter.save();
+  res.json({ count: counter.count });
 });
 
 app.listen(port, () => {
